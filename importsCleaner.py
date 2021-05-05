@@ -29,6 +29,14 @@ def parseCodeLine(line):
             return None
     return None
 
+def createModule(asname = None, refcount = 0, subs = [], importAll = False):
+    return {
+            'asname' : asname,
+            'refcount' : refcount,
+            'subs' : subs,
+            'importAll' :importAll
+        }
+
 def addBranch(branch, dictTree):
     levelNames = branch.split('.')
     print(levelNames)
@@ -36,33 +44,42 @@ def addBranch(branch, dictTree):
     if len(levelNames) == 1:
         print('Simple Import-----------------------')
         if nodeName.name not in importedModules:
+            '''
             moduleDict = {
                 'asname' : nodeName.asname,
                 'refcount' : 1,
                 'subs' : []
             }
             importedModules[nodeName.name] = moduleDict
+            '''
+            importedModules[nodeName.name] = createModule(nodeName.asname, 1, [], False)
     else: # Multilevel import eg: matplotlib.pyplot
         print('Multilevel Import-----------------------')
         # Insert ancestor if doesn't exist
         ancestorName = levelNames[0]
         if ancestorName not in importedModules:
+            '''
             moduleDict = {
                 'asname' : None,
                 'refcount' : 0,
                 'subs' : []
                 }
             importedModules[ancestorName] = moduleDict
+            '''
+            importedModules[ancestorName] = createModule(None, 0, [], False)
 
         parentDict = importedModules[ancestorName]
         moduleDict = {}
         for currentModule in levelNames[1:]:
             if currentModule not in parentDict:
+                '''
                 moduleDict = {
                 'asname' : None,
                 'refcount' : 0,
                 'subs' : []
                 }
+                '''
+                moduleDict = createModule(None, 0, [], False)
                 parentDict['subs'].append({currentModule: moduleDict})
             else:
                 moduleDict = parentDict[currentModule]
@@ -91,16 +108,16 @@ for filePath in programArgs.filesPath:
             if not result: # line does not contain an import statement
                 continue            
             
-            node = result[1]
+            statementType, node = result
 
-            if result[0] == 1: # Import
+            if statementType == 1: # Import
                 
                 for nodeName in node.names:
                     branch = nodeName.name
                     print('adding {} to dict'.format(branch))
                     addBranch(branch, importedModules)
 
-            elif result[0] ==2: # ImportFrom
+            elif statementType ==2: # ImportFrom
                 node.module
                 for nodeName in node.names:
                     branch = node.module + '.' + nodeName.name
