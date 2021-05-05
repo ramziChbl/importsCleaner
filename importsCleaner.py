@@ -23,7 +23,6 @@ def parseCodeLine(line):
             for n in node.names:
                 print(vars(n))
             print('---------------------------')
-            
             return 1, node
         else:
             return None
@@ -37,13 +36,13 @@ def createModule(asname = None, refcount = 0, subs = [], importAll = False):
             'importAll' :importAll
         }
 
-def addBranch(branch, dictTree):
+def addBranch(branch, asname, dictTree):
     levelNames = branch.split('.')
     print(levelNames)
 
     if len(levelNames) == 1:
         print('Simple Import-----------------------')
-        if nodeName.name not in importedModules:
+        if levelNames[0] not in importedModules:
             '''
             moduleDict = {
                 'asname' : nodeName.asname,
@@ -52,7 +51,7 @@ def addBranch(branch, dictTree):
             }
             importedModules[nodeName.name] = moduleDict
             '''
-            importedModules[nodeName.name] = createModule(nodeName.asname, 1, [], False)
+            importedModules[levelNames[0]] = createModule(asname, 1, [], False)
     else: # Multilevel import eg: matplotlib.pyplot
         print('Multilevel Import-----------------------')
         # Insert ancestor if doesn't exist
@@ -86,6 +85,7 @@ def addBranch(branch, dictTree):
                 pass
             parentDict = moduleDict
         moduleDict['refcount'] += 1
+        moduleDict['asname'] = asname
     return None
     
 
@@ -114,15 +114,17 @@ for filePath in programArgs.filesPath:
                 
                 for nodeName in node.names:
                     branch = nodeName.name
+                    asname = nodeName.asname
                     print('adding {} to dict'.format(branch))
-                    addBranch(branch, importedModules)
+                    addBranch(branch, asname, importedModules)
 
             elif statementType ==2: # ImportFrom
                 node.module
                 for nodeName in node.names:
                     branch = node.module + '.' + nodeName.name
+                    asname = nodeName.asname
                     print('adding {} to dict'.format(branch))
-                    addBranch(branch, importedModules)
+                    addBranch(branch, asname, importedModules)
                 pass
             '''
             for node in ast.iter_child_nodes(ast.parse(line)):
