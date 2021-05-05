@@ -3,6 +3,19 @@ import argparse
 import pprint
 
 
+def parseCodeLine(line):
+    for node in ast.iter_child_nodes(ast.parse(line)):
+        if isinstance(node, ast.ImportFrom):
+            print('found ImportFrom')
+            return 2, node
+        elif isinstance(node, ast.Import): # excluding the 'as' part of import
+            print('found Import')
+            return 1, node
+        else:
+            return None
+    return None
+    
+
 parser = argparse.ArgumentParser(description='Show unused and repeated imports.')
 parser.add_argument('filesPath', type=str, nargs='+', help='files to clean')
 
@@ -18,17 +31,57 @@ for filePath in programArgs.filesPath:
             # Remove leading and trailing characters like : ' ' and '\n'
             line = line.strip()
 
-            # Match "import *"
-            #matches = re.search(r'\s*import\s+(\w+\s*,?\s*)+', line)
-            #if matches:
-            #   print(matches.groups())
-            #matches = re.findall(r'\s*import\s+((\w+)\s*,?\s*)+', line)
-            #matches = re.findall(r'\s*import\s+((\w+)\s*,?\s*)+', line)
-            #'(?m)^(?:from[ ]+(\S+)[ ]+)?import[ ]+(\S+)[ ]*$'
-            #if matches:
-        #       print(matches)
+            result = parseCodeLine(line)
 
+            if not result:
+                continue
             
+            #node = ast.parse(line)
+            node = result[1]
+
+            if result[0] == 1: # Import
+                for nodeName in node.names:
+                    print(vars(nodeName))
+                    levelNames = nodeName.name.split('.')
+                    print(levelNames)
+
+                    if len(levelNames) == 1:
+                        print('Simple Import-----------------------')
+                        if nodeName.name not in importedModules:
+                            moduleDict = {
+                                'asname' : nodeName.asname,
+                                'refcount' : 1,
+                                'subs' : []
+                            }
+                            importedModules[nodeName.name] = moduleDict
+                    else: # Multilevel import eg: matplotlib.pyplot
+                        print('Multilevel Import-----------------------')
+                        # Insert ancestor if doesn't exist
+                        ancestorName = levelNames[0]
+                        if ancestorName not in importedModules:
+                            moduleDict = {
+                                'asname' : None,
+                                'refcount' : 0,
+                                'subs' : []
+                                }
+                            importedModules[ancestorName] = moduleDict
+
+                        parentDict = importedModules[ancestorName]
+                        moduleDict = {}
+                        for currentModule in levelNames[1:]:
+                            if currentModule not in parentDict:
+                                moduleDict = {
+                                'asname' : None,
+                                'refcount' : 0,
+                                'subs' : []
+                                }
+                                parentDict['subs'].append({currentModule: moduleDict})
+                            else:
+                                moduleDict = parentDict[currentModule]
+                                pass
+                            parentDict = moduleDict
+                        moduleDict['refcount'] += 1
+            '''
             for node in ast.iter_child_nodes(ast.parse(line)):
                 
                 if isinstance(node, ast.ImportFrom):
@@ -43,54 +96,7 @@ for filePath in programArgs.filesPath:
                     print('Import')
                     print(vars(node))
                     print(len(node.names))
-
-                    for nodeName in node.names:
-                        print(vars(nodeName))
-                        levelNames = nodeName.name.split('.')
-                        print(levelNames)
-                        if len(levelNames) == 1:
-                            if nodeName.name not in importedModules:
-                                moduleDict = {
-                                    'asname' : nodeName.asname,
-                                    'refcount' : 1,
-                                    'subs' : []
-                                }
-                                importedModules[nodeName.name] = moduleDict
-                        else: # Multilevel import eg: matplotlib.pyplot
-                            print('Multilevel Import-----------------------')
-                            # Insert ancestor if doesn't exist
-                            ancestorName = levelNames[0]
-                            if ancestorName not in importedModules:
-                                moduleDict = {
-                                    'asname' : None,
-                                    'refcount' : 0,
-                                    'subs' : []
-                                    }
-                                importedModules[ancestorName] = moduleDict
-
-                            parentDict = importedModules[ancestorName]
-                            moduleDict = {}
-                            for currentModule in levelNames[1:]:
-                                if currentModule not in parentDict:
-                                    moduleDict = {
-                                    'asname' : None,
-                                    'refcount' : 0,
-                                    'subs' : []
-                                    }
-                                    parentDict['subs'].append({currentModule: moduleDict})
-                                else:
-                                    moduleDict = parentDict[currentModule]
-                                    pass
-                                parentDict = moduleDict
-                            moduleDict['refcount'] += 1
-
-
-                            #print(currentImport)
-                    #for n in node.names:
-                    #    print(vars(n))
-                    #if not node.names[0].asname:
-                    #    modules.append(node.names[0].name)
-                print()
+            '''
+            print()
             
         pprint.pprint(importedModules)
-    
